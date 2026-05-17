@@ -1,26 +1,24 @@
-
-
-import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
-import threading
-import json
-import os
 import io
+import json
 import math
+import os
+import threading
+import tkinter as tk
 import webbrowser
 from datetime import datetime
-from PIL import Image, ImageTk, ImageDraw
+from tkinter import ttk, filedialog, messagebox
+
 import requests
-from urllib.parse import quote
+from PIL import Image, ImageTk, ImageDraw
 from google import genai
 
-# ── API Configuration ────────────────────────────────────────────────────────
+#API Configuration
 
 GEMINI_API_KEY  = "AIzaSyCUiPn2IPGkKsK2Qa228wGpkfVWdIC7kDo"
 LASTFM_API_KEY  = "a19e6e2a6e57ce3511d4ba61738ce47a"
 LASTFM_BASE_URL = "https://ws.audioscrobbler.com/2.0/"
 
-# ── Genre visual style hints sent to image generator ────────────────────────
+#Genre visual style hints sent to image generator
 
 GENRE_VISUAL_HINTS = {
     "Pop":          "vibrant colors, glossy aesthetic, pop art style",
@@ -49,7 +47,7 @@ GENRE_COLORS = {
     "Klasik":       ("#d4af37", "#c084fc"),
 }
 
-# ── Design tokens ────────────────────────────────────────────────────────────
+#Design tokens
 
 BG_BASE    = "#080810"
 BG_PANEL   = "#0f0f1a"
@@ -75,9 +73,7 @@ FONT_HEAD  = ("Helvetica", 11, "bold")
 FONT_MONO  = ("Courier", 9, "bold")
 
 
-# ════════════════════════════════════════════════════════════════════════════
 #  Back-end helpers
-# ════════════════════════════════════════════════════════════════════════════
 
 def call_gemini(journal_text, genre, era, track_count):
     """Ask Gemini to generate fictional album metadata as JSON."""
@@ -175,9 +171,7 @@ def generate_cover_image(cover_prompt, genre):
         return img
 
 
-# ════════════════════════════════════════════════════════════════════════════
 #  Custom Widgets
-# ════════════════════════════════════════════════════════════════════════════
 
 class NeonButton(tk.Button):
     """Styled tk.Button that mimics a neon bordered button. Simple and reliable."""
@@ -312,9 +306,7 @@ class VinylRecord(tk.Canvas):
         self.after(40, self._tick)
 
 
-# ════════════════════════════════════════════════════════════════════════════
 #  Main Application Window
-# ════════════════════════════════════════════════════════════════════════════
 
 class AlbumCoverStudio(tk.Tk):
 
@@ -335,7 +327,7 @@ class AlbumCoverStudio(tk.Tk):
         self._build_bg()
         self._build_layout()
 
-    # ── Dot-grid background ──────────────────────────────────────────────────
+    #Dot-grid background
 
     def _build_bg(self):
         self._bg = tk.Canvas(self, bg=BG_BASE, highlightthickness=0)
@@ -345,7 +337,7 @@ class AlbumCoverStudio(tk.Tk):
             for y in range(0, 900, 30):
                 self._bg.create_oval(x, y, x + 1, y + 1, fill="#18183a", outline="")
 
-    # ── Two-column layout ────────────────────────────────────────────────────
+    #Two-column layout
 
     def _build_layout(self):
         wrap = tk.Frame(self, bg=BG_BASE)
@@ -360,12 +352,12 @@ class AlbumCoverStudio(tk.Tk):
         self._build_left()
         self._build_right()
 
-    # ── Left panel: branding + inputs ────────────────────────────────────────
+    #Left panel
 
     def _build_left(self):
         p = self._col_left
 
-        # ── Logo row
+        # Logo row
         logo = tk.Frame(p, bg=BG_BASE)
         logo.pack(fill=tk.X)
         tk.Label(logo, text="ALBUM", fg=NEON_PINK, bg=BG_BASE,
@@ -378,7 +370,7 @@ class AlbumCoverStudio(tk.Tk):
         # Accent line
         tk.Frame(p, bg=NEON_PINK, height=2).pack(fill=tk.X, pady=(4, 18))
 
-        # ── Mood text area
+        # Mood text area
         self._field_label(p, "YOUR MOOD / RUH HALİN", NEON_PINK)
         journal_border = tk.Frame(p, bg=NEON_PINK, padx=1, pady=1)
         journal_border.pack(fill=tk.X, pady=(4, 14))
@@ -396,20 +388,20 @@ class AlbumCoverStudio(tk.Tk):
             "and an old song was playing through my headphones. "
             "I felt both peaceful and melancholic...")
 
-        # ── Genre
+        # Genre
         self._field_label(p, "GENRE", NEON_CYAN)
         self._genre_var = tk.StringVar(value="Indie")
         self._build_styled_combo(p, self._genre_var,
                                  list(GENRE_VISUAL_HINTS.keys()), NEON_CYAN)
 
-        # ── Era
+        # Era
         self._field_label(p, "ERA", NEON_CYAN)
         self._era_var = tk.StringVar(value="2010s")
         self._build_styled_combo(p, self._era_var,
                                  ["1970s","1980s","1990s","2000s","2010s","2020s"],
                                  NEON_CYAN)
 
-        # ── Track count
+        # Track count
         self._field_label(p, "TRACK COUNT", NEON_CYAN)
         count_border = tk.Frame(p, bg=NEON_CYAN, padx=1, pady=1)
         count_border.pack(anchor="w", pady=(4, 20))
@@ -425,7 +417,7 @@ class AlbumCoverStudio(tk.Tk):
             relief="flat", bd=0,
         ).pack()
 
-        # ── Generate button
+        # Generate button
         self._gen_btn = NeonButton(
             p, text="▶  GENERATE ALBUM",
             command=self._on_generate,
@@ -435,7 +427,7 @@ class AlbumCoverStudio(tk.Tk):
         )
         self._gen_btn.pack(fill=tk.X, pady=(0, 10))
 
-        # ── Status
+        # Status
         self._status_var = tk.StringVar(value="")
         self._status_lbl = tk.Label(
             p, textvariable=self._status_var,
@@ -444,7 +436,7 @@ class AlbumCoverStudio(tk.Tk):
         )
         self._status_lbl.pack(anchor="w")
 
-        # ── Save button (hidden until generation is done)
+        # Save button (hidden until generation is done)
         self._save_btn = NeonButton(
             p, text="⬇  SAVE ALBUM  (JSON + PNG)",
             command=self._on_save,
@@ -460,7 +452,7 @@ class AlbumCoverStudio(tk.Tk):
     def _build_styled_combo(self, parent, var, values, color):
         border = tk.Frame(parent, bg=color, padx=1, pady=1)
         border.pack(fill=tk.X, pady=(4, 12))
-        # Use tk.OptionMenu for reliable dark styling across all platforms
+        # Use tk.OptionMenu
         menu_btn = tk.OptionMenu(border, var, *values)
         menu_btn.configure(
             bg=BG_INPUT, fg=GRAY_1,
@@ -476,12 +468,12 @@ class AlbumCoverStudio(tk.Tk):
         )
         menu_btn.pack(fill=tk.X)
 
-    # ── Right panel: vinyl + metadata + tracklist ────────────────────────────
+    # Right panel: vinyl + metadata + tracklist
 
     def _build_right(self):
         p = self._col_right
 
-        # ── Top: vinyl + metadata side by side
+        # Top: vinyl + metadata
         top = tk.Frame(p, bg=BG_BASE)
         top.pack(fill=tk.X, pady=(0, 12))
 
@@ -552,7 +544,7 @@ class AlbumCoverStudio(tk.Tk):
             "<MouseWheel>",
             lambda e: self._track_canvas.yview_scroll(-1*(e.delta//120), "units"))
 
-    # ── Event handlers ───────────────────────────────────────────────────────
+    # Event handlers
 
     def _on_generate(self):
         journal = self._journal.get("1.0", tk.END).strip()
@@ -610,7 +602,7 @@ class AlbumCoverStudio(tk.Tk):
         except Exception as e:
             self.after(0, self._on_error, str(e))
 
-    # ── Result rendering ─────────────────────────────────────────────────────
+    # Result rendering
 
     def _render(self, album_data, tracklist, cover_img, genre):
         self._vinyl.stop_spin()
@@ -655,7 +647,7 @@ class AlbumCoverStudio(tk.Tk):
             row = tk.Frame(self._track_inner, bg=bg, pady=7, padx=6)
             row.pack(fill=tk.X)
 
-            # Left accent bar (neon vertical stripe)
+            # Left accent bar
             tk.Frame(row, bg=color, width=3).pack(side=tk.LEFT, fill=tk.Y, padx=(0, 8))
 
             # Track number
@@ -695,7 +687,7 @@ class AlbumCoverStudio(tk.Tk):
         for w in self._tag_frame.winfo_children():
             w.destroy()
 
-    # ── Save ─────────────────────────────────────────────────────────────────
+    # Save
 
     def _on_save(self):
         if not self._album_data or not self._cover_image:
@@ -727,7 +719,7 @@ class AlbumCoverStudio(tk.Tk):
         messagebox.showinfo("Saved!",
                             f"JSON → {json_path}\nPNG  → {png_path}")
 
-    # ── Utilities ─────────────────────────────────────────────────────────────
+    # Utilities
 
     def _set_status(self, msg):
         self.after(0, self._status_var.set, msg)
@@ -739,10 +731,7 @@ class AlbumCoverStudio(tk.Tk):
         self._gen_btn.set_enabled(True)
         messagebox.showerror("Error", msg)
 
-
-# ════════════════════════════════════════════════════════════════════════════
 #  Entry point
-# ════════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
     app = AlbumCoverStudio()
