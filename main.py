@@ -14,7 +14,7 @@ from google import genai
 
 #API Configuration
 
-GEMINI_API_KEY  = "AIzaSyDSaGOIyhgT-9sBIwQGcoZmKxhkzOzh_wY"
+GEMINI_API_KEY  = " "
 LASTFM_API_KEY  = "50141b3f6ee3de00f074dac1a5c2922d"
 LASTFM_BASE_URL = "https://ws.audioscrobbler.com/2.0/"
 
@@ -165,6 +165,7 @@ def generate_cover_image(cover_prompt, genre):
         return Image.open(io.BytesIO(resp.content)).convert("RGB")
     except Exception:
         img = Image.new("RGB", (600, 600), color=(20, 20, 40))
+        return img
 
 #  Custom Widgets
 
@@ -252,20 +253,16 @@ class VinylRecord(tk.Canvas):
             self.create_oval(cx - rr, cy - rr, cx + rr, cy + rr,
                              fill="", outline=f"#{shade}{shade}{shade}", width=1)
 
-        # Spinning sheen line
-        a = math.radians(angle_deg)
-        lx = cx + int(r * 0.85 * math.cos(a))
-        ly = cy + int(r * 0.85 * math.sin(a))
-        self.create_line(cx, cy, lx, ly, fill="#ffffff", width=3)
 
         # Center circle (album art or placeholder)
-        label_r = int(r * 0.34)
+        label_r = int(r * 0.85)
         if self._pil_img:
             dia = label_r * 2
-            thumb = self._pil_img.resize((dia, dia), Image.LANCZOS)
-            mask  = Image.new("L", (dia, dia), 0)
+            rotated = self._pil_img.rotate(-angle_deg, resample=Image.NEAREST)
+            thumb = rotated.resize((dia, dia), Image.LANCZOS)
+            mask = Image.new("L", (dia, dia), 0)
             ImageDraw.Draw(mask).ellipse((0, 0, dia, dia), fill=255)
-            circ  = Image.new("RGBA", (dia, dia))
+            circ = Image.new("RGBA", (dia, dia))
             circ.paste(thumb, (0, 0))
             circ.putalpha(mask)
             self._tk_img = ImageTk.PhotoImage(circ)
@@ -277,6 +274,11 @@ class VinylRecord(tk.Canvas):
                              fill=BG_CARD, outline=GRAY_3, width=1)
             self.create_text(cx, cy, text="♫", fill=GRAY_3,
                              font=("Helvetica", 28))
+
+        self.create_line(cx, cy, cx, cy - int(r * 0.85),
+                         fill="#ffffff", width=3)
+
+        # Spindle hole
 
         # Spindle hole
         self.create_oval(cx - 5, cy - 5, cx + 5, cy + 5,
@@ -600,8 +602,8 @@ class AlbumCoverStudio(tk.Tk):
     # Result rendering
 
     def _render(self, album_data, tracklist, cover_img, genre):
-        self._vinyl.stop_spin()
         self._vinyl.set_cover(cover_img)
+        self._vinyl.start_spin()
 
         # Metadata labels
         self._lbl_album.configure(text=album_data.get("album_name", "—"))
