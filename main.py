@@ -14,8 +14,8 @@ from google import genai
 
 #API Configuration
 
-GEMINI_API_KEY  = "AIzaSyCUiPn2IPGkKsK2Qa228wGpkfVWdIC7kDo"
-LASTFM_API_KEY  = "a19e6e2a6e57ce3511d4ba61738ce47a"
+GEMINI_API_KEY  = "AIzaSyDSaGOIyhgT-9sBIwQGcoZmKxhkzOzh_wY"
+LASTFM_API_KEY  = "50141b3f6ee3de00f074dac1a5c2922d"
 LASTFM_BASE_URL = "https://ws.audioscrobbler.com/2.0/"
 
 #Genre visual style hints sent to image generator
@@ -150,26 +150,21 @@ def build_tracklist(tags, target_count):
 
 def generate_cover_image(cover_prompt, genre):
     """
-    Generate album cover using Gemini Imagen (free 500 images/day).
-    Falls back to a colored placeholder if the API call fails.
+    Generate album cover using Pollinations.ai (free, no API key needed).
+    Falls back to a colored placeholder if the request fails.
     """
     visual_hint = GENRE_VISUAL_HINTS.get(genre, "artistic album cover")
-    full_prompt = f"album cover art, {cover_prompt}, {visual_hint}, high quality"
+    full_prompt = f"album cover art, {cover_prompt}, {visual_hint}, high quality, square format"
 
     try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        response = client.models.generate_images(
-            model="imagen-3.0-generate-002",
-            prompt=full_prompt,
-            config={"number_of_images": 1, "aspect_ratio": "1:1"},
-        )
-        img_bytes = response.generated_images[0].image.image_bytes
-        return Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        from urllib.parse import quote
+        encoded = quote(full_prompt)
+        url = f"https://image.pollinations.ai/prompt/{encoded}?width=600&height=600&nologo=true"
+        resp = requests.get(url, timeout=90)
+        resp.raise_for_status()
+        return Image.open(io.BytesIO(resp.content)).convert("RGB")
     except Exception:
-        # Fallback: solid color placeholder with genre label
         img = Image.new("RGB", (600, 600), color=(20, 20, 40))
-        return img
-
 
 #  Custom Widgets
 
