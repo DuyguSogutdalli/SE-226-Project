@@ -14,7 +14,7 @@ from google import genai
 
 #API Configuration
 
-GEMINI_API_KEY  = " "
+GEMINI_API_KEY  = "AIzaSyDPsb1lEXlKsHN75K7AQv1PrYe_PBta-PM"
 LASTFM_API_KEY  = "50141b3f6ee3de00f074dac1a5c2922d"
 LASTFM_BASE_URL = "https://ws.audioscrobbler.com/2.0/"
 
@@ -31,6 +31,19 @@ GENRE_VISUAL_HINTS = {
     "Metal":        "dark and heavy, skull motifs, fire and metal textures",
     "Türk Pop":     "Mediterranean warmth, cultural patterns, vibrant hues",
     "Klasik":       "ornate classical frames, oil painting style, timeless",
+}
+
+GENRE_FALLBACK_TAGS = {
+    "Pop":           ["pop", "indie pop", "synth-pop", "dance pop", "electropop"],
+    "Rock":          ["rock", "alternative rock", "classic rock", "indie rock", "hard rock"],
+    "Hip-Hop / Rap": ["hip-hop", "rap", "trap", "old school hip hop", "underground hip hop"],
+    "Electronic":    ["electronic", "edm", "house", "techno", "ambient"],
+    "Indie":         ["indie", "indie pop", "indie folk", "lo-fi", "dream pop"],
+    "R&B / Soul":    ["rnb", "soul", "neo soul", "funk", "smooth soul"],
+    "Jazz":          ["jazz", "smooth jazz", "bebop", "jazz fusion", "blues"],
+    "Metal":         ["metal", "heavy metal", "death metal", "black metal", "doom metal"],
+    "Türk Pop":      ["turkish pop", "turkish", "turk pop", "arabesk", "anatolian rock"],
+    "Klasik":        ["classical", "orchestral", "piano", "baroque", "symphony"],
 }
 
 # Per-genre neon accent color pairs
@@ -78,6 +91,14 @@ FONT_MONO  = ("Courier", 9, "bold")
 def call_gemini(journal_text, genre, era, track_count):
     """Ask Gemini to generate fictional album metadata as JSON."""
     client = genai.Client(api_key=GEMINI_API_KEY)
+
+    if genre == "Türk Pop":
+        genre_tag_note = "IMPORTANT: lastfm_tags must be English Last.fm tags: turkish pop, turkish, turk pop, arabesk, anatolian rock, turkish folk, mediterranean."
+    elif genre == "Klasik":
+        genre_tag_note = "IMPORTANT: lastfm_tags must be English Last.fm tags: classical, orchestral, piano, baroque, symphony, chamber music."
+    else:
+        genre_tag_note = "lastfm_tags must be real English Last.fm tags."
+
     prompt = f"""You are a creative music director. Based on the user's mood or journal entry below,
 create a completely FICTIONAL album concept.
 
@@ -92,6 +113,8 @@ Return ONLY a valid JSON object — no markdown fences, no extra text — with t
   "lastfm_tags": ["5-7 lowercase Last.fm tag strings"]
 }}
 
+{genre_tag_note}
+
 Genre: {genre} | Era: {era} | Tracks: {track_count}
 
 Journal:
@@ -102,7 +125,6 @@ Journal:
         contents=prompt,
     )
     raw = response.text.strip()
-    # Strip markdown code fences if Gemini added them
     if raw.startswith("```"):
         parts = raw.split("```")
         raw = parts[1]
@@ -110,7 +132,6 @@ Journal:
             raw = raw[4:]
         raw = raw.strip()
     return json.loads(raw)
-
 
 def fetch_tracks_by_tag(tag, limit=15):
     """Query Last.fm tag.gettoptracks and return a list of track dicts."""
@@ -125,7 +146,7 @@ def fetch_tracks_by_tag(tag, limit=15):
     return resp.json().get("tracks", {}).get("track", [])
 
 
-def build_tracklist(tags, target_count):
+def build_tracklist(tags, target_count, genre=None):
     """Combine tracks from multiple tags, deduplicate, return exact count."""
     seen, tracks = set(), []
     for tag in tags:
@@ -145,6 +166,24 @@ def build_tracklist(tags, target_count):
                 tracks.append({"title": title, "artist": artist, "url": url})
             if len(tracks) >= target_count * 2:
                 break
+
+    if len(tracks) < target_count and genre and genre in GENRE_FALLBACK_TAGS:
+        for tag in GENRE_FALLBACK_TAGS[genre]:
+            if len(tracks) >= target_count:
+                break
+            try:
+                raw = fetch_tracks_by_tag(tag, limit=20)
+            except Exception:
+                continue
+            for t in raw:
+                title  = t.get("name", "Unknown")
+                artist = t.get("artist", {}).get("name", "Unknown")
+                url    = t.get("url", "")
+                key    = f"{title.lower()}|{artist.lower()}"
+                if key not in seen:
+                    seen.add(key)
+                    tracks.append({"title": title, "artist": artist, "url": url})
+
     return tracks[:target_count]
 
 
@@ -482,7 +521,7 @@ class AlbumCoverStudio(tk.Tk):
         meta = tk.Frame(top, bg=BG_BASE)
         meta.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, anchor="n")
 
-        tk.Label(meta, text="AI-CRATED PLAYLIST",
+        tk.Label(meta, text="AI-CURATED PLAYLIST",
                  fg=GRAY_3, bg=BG_BASE, font=FONT_MONO).pack(anchor="w")
 
         self._lbl_album = tk.Label(meta, text="—",
@@ -578,7 +617,7 @@ class AlbumCoverStudio(tk.Tk):
             album_data = call_gemini(journal, genre, era, track_count)
 
             self._set_status("◈  Fetching real tracks from Last.fm...")
-            tracklist = build_tracklist(album_data.get("lastfm_tags", []), track_count)
+            tracklist = build_tracklist(album_data.get("lastfm_tags", []), track_count, genre=genre)
 
             self._set_status("◈  Generating cover art via Pollinations.ai...")
             cover_img = generate_cover_image(
