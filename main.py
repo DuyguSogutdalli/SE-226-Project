@@ -482,7 +482,7 @@ class AlbumCoverStudio(tk.Tk):
         meta = tk.Frame(top, bg=BG_BASE)
         meta.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, anchor="n")
 
-        tk.Label(meta, text="AI-CURATED PLAYLIST",
+        tk.Label(meta, text="AI-CRATED PLAYLIST",
                  fg=GRAY_3, bg=BG_BASE, font=FONT_MONO).pack(anchor="w")
 
         self._lbl_album = tk.Label(meta, text="—",
